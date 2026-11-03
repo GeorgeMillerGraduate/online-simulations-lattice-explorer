@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Lattice Explorer — Jenga Code</title>
+    <meta
+      name="description"
+      content="Explore lattices, reduce a basis and check shortest-vector or closest-point calculations with step-by-step working."
+    />
+    <link rel="stylesheet" href="style.css?v=1" />
+  </head>
+  <body>
+    <a class="skip" href="#workspace">Skip to the lattice</a>
+    <header>
+      <a class="brand" href="/"
+        ><svg viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="23" fill="none" stroke="currentColor" />
+          <path
+            d="M32 2 38 26 62 32 38 38 32 62 26 38 2 32 26 26Z"
+            fill="currentColor"
+          />
+          <path
+            d="M32 7 32 32 26 26ZM57 32 32 32 38 26ZM32 57 32 32 38 38ZM7 32 32 32 26 38Z"
+            fill="#f6f0e3"
+          /></svg
+        ><span
+          >Jenga<span class="copper">Code</span
+          ><small>Computing · mathematics · ideas</small></span
+        ></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="/">Home</a><a href="/apps/">Applications</a
+        ><a href="/blog/">Journal</a
+        ><a href="/qualifications/">Qualifications</a>
+      </nav>
+      <span class="edition"
+        >THE COMPUTING COLLECTION<br />No. 035 / LATTICES</span
+      >
+    </header>
+    <main>
+      <aside class="left">
+        <h1>Lattice Explorer</h1>
+        <p class="intro">Explore the geometry.<br />Check your working.</p>
+        <form id="settings">
+          <fieldset>
+            <legend>Task</legend>
+            <label
+              ><input type="radio" name="task" value="svp" checked /> Shortest
+              vector</label
+            ><label
+              ><input type="radio" name="task" value="cvp" /> Closest
+              point</label
+            ><label
+              ><input type="radio" name="task" value="basis" /> Basis
+              reduction</label
+            >
+          </fieldset>
+          <fieldset>
+            <legend>Algorithm</legend>
+            <label for="algorithm" class="sr">Algorithm</label
+            ><select id="algorithm">
+              <option value="gauss">Gauss reduction · 2D</option>
+              <option value="lll">LLL reduction</option>
+              <option value="babai">Babai nearest plane</option>
+              <option value="round">Coordinate rounding</option>
+              <option value="enum">Exact enumeration</option>
+            </select>
+            <p id="algorithm-note" class="hint"></p>
+          </fieldset>
+          <fieldset>
+            <legend>Your matrix</legend>
+            <label class="sr" for="matrix">Basis matrix</label
+            ><textarea id="matrix" spellcheck="false" rows="3">
+[[6, 2],
+ [4, 2]]</textarea
+            >
+            <p class="hint">
+              Each row is a basis vector. Paste a JSON array or rows separated
+              by new lines. Square integer matrices, 2–6 dimensions.
+            </p>
+            <div class="buttons">
+              <button type="button" id="validate">Check matrix</button
+              ><button type="submit" class="primary" id="run">
+                Run your example
+              </button>
+            </div>
+            <p id="validation" class="hint" role="status"></p>
+            <label for="target">Target <span>(closest-point mode)</span></label
+            ><input id="target" value="[3, 2]" spellcheck="false" disabled />
+            <div class="limit">
+              <label for="seconds">Search limit</label
+              ><select id="seconds">
+                <option value="1000">1 second</option>
+                <option value="3000" selected>3 seconds</option>
+                <option value="10000">10 seconds</option>
+              </select>
+            </div>
+            <p id="error" role="alert"></p>
+          </fieldset>
+        </form>
+        <fieldset>
+          <legend>Generate an example</legend>
+          <div class="generator">
+            <label
+              >Dimensions<select id="dimensions">
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+                <option>6</option>
+              </select></label
+            ><label
+              >Difficulty<select id="difficulty">
+                <option value="easy">Gentle</option>
+                <option value="skewed" selected>Skewed</option>
+              </select></label
+            ><label
+              >Seed<input
+                id="seed"
+                type="number"
+                min="0"
+                max="4294967295"
+                value="1042"
+            /></label>
+          </div>
+          <div class="buttons">
+            <button id="generate" class="primary">Generate &amp; run</button
+            ><button id="worked">Worked example</button>
+          </div>
+          <p class="hint">Use the same seed to reproduce the same example.</p>
+        </fieldset>
+        <figure class="study">
+          <img
+            src="assets/lattice-study.webp"
+            width="720"
+            height="480"
+            alt="An engraved drafting compass and geometric parallelogram construction"
+            loading="lazy"
+          />
+          <figcaption>A new basis. The same lattice.</figcaption>
+        </figure>
+        <div class="file-tools">
+          <button id="import">Import JSON</button
+          ><input
+            id="file"
+            type="file"
+            accept=".json,application/json"
+            hidden
+          /><button id="export">Export working</button>
+        </div>
+      </aside>
+      <section class="workspace" id="workspace">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">The geometry of integer combinations</p>
+            <h2 id="page-title">Same lattice.<br />A better basis.</h2>
+          </div>
+          <span id="badge" class="badge">2D · Gauss reduction</span>
+        </div>
+        <div class="plot-shell">
+          <div class="plot-toolbar">
+            <span id="view-label">Two-dimensional lattice</span>
+            <div>
+              <button id="zoom-in" aria-label="Zoom in">+</button
+              ><button id="zoom-out" aria-label="Zoom out">−</button
+              ><button id="fit">Fit</button>
+            </div>
+          </div>
+          <div id="projection" hidden>
+            <label>Horizontal coordinate<select id="axis-x"></select></label
+            ><label>Vertical coordinate<select id="axis-y"></select></label>
+          </div>
+          <svg
+            id="plot"
+            viewBox="0 0 720 500"
+            role="img"
+            aria-label="Interactive lattice with basis vectors and candidate point"
+          ></svg>
+          <div class="plot-legend">
+            <span class="original">Original basis</span
+            ><span class="reduced">Current basis</span
+            ><span class="candidate">Candidate</span
+            ><span class="target">Target</span>
+          </div>
+          <p class="plot-help" id="plot-help">
+            Drag an original vector’s tip to edit the 2D basis. Closest-point
+            mode also lets you drag the target.
+          </p>
+        </div>
+        <div class="playback">
+          <button id="first" aria-label="First step">↤</button
+          ><button id="previous" aria-label="Previous step">◀</button
+          ><button class="primary" id="play">▶ Play</button
+          ><button id="next" aria-label="Next step">▶</button
+          ><label
+            >Speed<select id="speed">
+              <option value="1500">Slow</option>
+              <option value="750" selected>Normal</option>
+              <option value="250">Fast</option>
+            </select></label
+          ><span id="position"></span>
+        </div>
+        <label class="sr" for="seek">Working step</label
+        ><input id="seek" type="range" min="0" value="0" />
+        <div class="result-strip">
+          <div>
+            <p class="eyebrow" id="result-label">Shortest vector</p>
+            <strong id="result-vector">[2, 0]</strong>
+          </div>
+          <div>
+            <p class="eyebrow" id="length-label">Length</p>
+            <strong id="result-length">2</strong>
+          </div>
+          <span class="status" id="status"></span
+          ><button id="copy">Copy result</button>
+        </div>
+        <div class="search-status">
+          <span id="search-status" role="status"></span
+          ><button id="stop" hidden>Stop search</button>
+        </div>
+        <p class="footnote" id="provenance"></p>
+      </section>
+      <aside class="right">
+        <p class="eyebrow">Check your working</p>
+        <section class="working">
+          <h3 id="step-title">Original basis</h3>
+          <pre id="calculation"></pre>
+          <p id="step-explanation"></p>
+        </section>
+        <section>
+          <div class="section-heading">
+            <h3>Recorded trace</h3>
+            <button id="last">Jump to result</button>
+          </div>
+          <div class="trace-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Step</th>
+                  <th scope="col">Operation / basis</th>
+                </tr>
+              </thead>
+              <tbody id="trace"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="answer">
+          <h3>Compare your answer</h3>
+          <label for="answer" id="answer-label">Your vector</label
+          ><input id="answer" value="[2, 0]" spellcheck="false" /><button
+            id="check-answer"
+          >
+            Check answer
+          </button>
+          <div id="answer-result" role="status">
+            Enter a vector to check membership and length.
+          </div>
+        </section>
+        <section class="guide">
+          <details>
+            <summary>Final basis &amp; transformation</summary>
+            <pre id="transform"></pre>
+          </details>
+          <p class="eyebrow">What the result means</p>
+          <h3 id="guide-title"></h3>
+          <details>
+            <summary>Read the explanation</summary>
+            <p id="guide-text"></p>
+          </details>
+          <a id="notes" target="_blank" rel="noopener">Algorithm notes ↗</a>
+          <details>
+            <summary>Conventions &amp; limits</summary>
+            <p>
+              Rows are basis vectors. Coordinates satisfy v = zB, with integer
+              z. Membership and search distances use integer arithmetic. LLL and
+              Babai use floating-point Gram–Schmidt calculations.
+            </p>
+            <p>
+              Enumeration uses a certified coefficient box, with a time limit
+              and a ceiling of two million tuples. It claims optimality only
+              after checking the whole box. Displayed lattice points are a
+              finite sample; higher-dimensional views are projections.
+            </p>
+            <p>
+              Input must be a full-rank square integer matrix. This is a
+              teaching and debugging tool for small examples, not a
+              cryptanalytic solver.
+            </p>
+          </details>
+          <a href="CREDITS.md">Sources &amp; credits ↗</a>
+        </section>
+      </aside>
+    </main>
+    <footer>
+      Jenga Code. <span>Independent software by George Miller.</span
+      ><a href="/apps/">Explore all applications ↗</a>
+    </footer>
+    <script type="module" src="js/app.mjs"></script>
+  </body>
+</html>
